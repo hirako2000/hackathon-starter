@@ -1,6 +1,101 @@
 # Changelog
 ---------
 
+### 8.1.0 (February 1, 2025)
+Security Enhancements
+- Added URL validation for redirects through session.returnTo (CWE-601).
+- Fixed OAuth state parameter generation and handling to address CSRF attack vectors in the OAuth workflow.
+- Added additional sanitization for user input in database queries using $eq in MongoDB.
+
+API and Integration:
+- Unified formatting for authentication parameters in route definitions and passport.js configuration.
+- Refactored common code for OAuth 2 token processing in passport strategies to improve maintainability.
+- Reworked the GitHub and Twitch API integration examples with additional data from the APIs.
+- Reworked the Twilio API integration example to use Twilio’s sandbox servers and test phone numbers.
+- Upgraded the Pinterest API example to use v5 calls instead of the broken v1.
+- Reworked the Tumblr API integration example with additional data from the API.
+- Added a properly working OAuth 1.0a integration for Tumblr.
+- Removed sign-in by Snapchat due to increased difficulty for developers and a focus on hackathon participants.
+- Removed Foursquare OAuth authorization and updated the API demo with new examples.
+- Renamed Twitter to X (Some of the backend and code still reference Twitter due to upstream dependencies, and the login button is using Twitter colors pending X addition to bootstrap-social).
+
+Update/Upgrades:
+- Dropped support for Nodejs < 22 due to ESM module import issues prior to that version.
+- Migrated from the unmaintained passport-linkedin-oauth2 to a passport-openidconnect strategy.
+--- Added support and examples for openid-client.
+- Migrated from the deprecated paypal-rest-sdk to an example without the SDK, providing OAuth calls depending on the page state.
+- Migrated from the unmaintained bootstrap-social to a fork that can be easily patched and updated.
+- Migrated eslint to v9, and its new config format (breaking change).
+- Migrated Husky to v9, and its new config format (breaking change). Fixed Windows commit issue.
+- Updated dependencies. 
+- Added temporary patch files for connect-flash and passport-openidconnect based on pending pull requests or issues on GitHub.
+
+Other:
+- Fixed a bug that prevented profile pictures from being displayed.
+- Added authentication link/unlink options to the user profile page for all OAuth/Identity providers.
+- Fixed typos, broken links, and minor formatting alignment issues on various pages.
+- Fixed spelling errors in startup information displayed in the console.
+- Refactored URL validation in unit tests for Gravatar generation to conform with CodeQL rules. Even though CodeQL does vulnerability checks, this is not a security issue since it is unit tests.
+- Updated the placeholder main.js to use the current format (not deprecated JS).
+- Updated the GitHub repo worker/runner configs to use proper permissions
+- Return exit code 1 if there is a database connection issue at startup.
+- Added the --trace-deprecation flag to startup to provide better information on runtime deprecation warnings.
+- .gitignore file to exclude the uploads path.
+- Updated the copyright year.
+- Updated documentation.
+
+### 8.0.0 (July 28, 2023)
+
+- Security: Renamed the cookie and set secure attribute for cookie transmission when https is present
+- Security: Migrated off known deprecated, vulnerable or unmaintained dependencies
+- Security: Added express rate limiter
+- Added additional sanitization and validation for external inputs. Lusca provides input protection. The additional sanitization and validation are to add another layer of protection.
+- Added patch-package for temporary patching dependencies
+- Temporary patch for passportjs to handle logout failures
+- Temporary patch for passport-oauth2: better auth failure reporting
+- Removed broken Instagram oauth support as Meta no longer supports it
+- Added handler for 404(page not found) to avoid 500 errors when a route is not found
+- Fixed unhandled error during logout
+- Fixed pug tags with multiple attributes (thanks to @soundz77)
+- Added Lint-stage and Husky to lint all commits
+- Fix req.logout for passport 0.6
+- Fix broken unit test
+- Update default gravatar
+- Visual UI improvements
+- Added Github Actions: NodeJS CI check unit test and lint
+- Upgrade nodejs for docker
+- Removed express-handlebars npm package as it was not used and is not that popular compared to pug (breaking change)
+- Removed chalk  npm package as it was not used (breaking change)
+- Updated documentation
+
+- Upgraded to mongoose 7 (breaking change)
+- Upgraded to popper2
+- Migrated from googleapis npm package to @googleapis/drive and @googleapis/sheets to reduce size and improve performance (breaking change)
+- Migrated from passport-twitch-new to twitch-passport (breaking change)
+- Migrated from lob to @lob/lob-typescript-sdk (breaking change)
+- Migrated from deprecated node-sass to Dart Sass
+- Migrated off passport-openid (breaking change)
+- Migrated off nodemailer-sendgrid (breaking change)
+- Migrated off passport-twitter and twitter-lite (breaking change)
+- Migrated off node-quickbooks (breaking change)
+- Updated dependencies
+- Removed travis.yml
+
+API example changes:
+- Removed the twitter API example as the APIs are actively changing and mostly not free (breaking change)
+- Removed the Instagram API example as it was broken and Meta has significantly reduced the API scope and availablity for devs
+- Improved the Chartjs+AlphaVantage to handle API failures
+- Fix minor formatting issues and missing images
+- Tumblr - Fixed the Tumblr example and moved off tumblrjs (breaking change)
+- Added missing parameters for the Lob's new API requirements
+- Improved the Last.fm API example as the artist image is no longer vended by last.fm
+
+### 7.0.0 (Mar 26, 2022)
+- Dropped support for Node.js <16
+- Switched to Bootstrap 5
+- Removed older Bootstrap 4 themes
+- Updated dependencies
+
 ### 6.0.0 (January 2, 2020)
 - Dropped support for NodeJS 8.x, due to its EOL
 - Use HTML5 native client form validation (thanks to @peterblazejewicz)

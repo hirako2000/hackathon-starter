@@ -6,6 +6,7 @@ const _ = require('lodash');
 const validator = require('validator');
 const mailChecker = require('mailchecker');
 const User = require('../models/User');
+const Session = require('../models/Session');
 
 const randomBytesAsync = promisify(crypto.randomBytes);
 
@@ -124,14 +125,14 @@ exports.postSignup = async (req, res, next) => {
   const validationErrors = [];
   if (!validator.isEmail(req.body.email)) validationErrors.push({ msg: 'Please enter a valid email address.' });
   if (!validator.isLength(req.body.password, { min: 8 })) validationErrors.push({ msg: 'Password must be at least 8 characters long' });
-  if (req.body.password !== req.body.confirmPassword) validationErrors.push({ msg: 'Passwords do not match' });
+  if (validator.escape(req.body.password) !== validator.escape(req.body.confirmPassword)) validationErrors.push({ msg: 'Passwords do not match' });
   if (validationErrors.length) {
     req.flash('errors', validationErrors);
     return res.redirect('/signup');
   }
   req.body.email = validator.normalizeEmail(req.body.email, { gmail_remove_dots: false });
   try {
-    const existingUser = await User.findOne({ email: req.body.email });
+    const existingUser = await User.findOne({ email: { $eq: req.body.email } });
     if (existingUser) {
       req.flash('errors', { msg: 'Account with that email address already exists.' });
       return res.redirect('/signup');
@@ -202,7 +203,7 @@ exports.postUpdateProfile = async (req, res, next) => {
 exports.postUpdatePassword = async (req, res, next) => {
   const validationErrors = [];
   if (!validator.isLength(req.body.password, { min: 8 })) validationErrors.push({ msg: 'Password must be at least 8 characters long' });
-  if (req.body.password !== req.body.confirmPassword) validationErrors.push({ msg: 'Passwords do not match' });
+  if (validator.escape(req.body.password) !== validator.escape(req.body.confirmPassword)) validationErrors.push({ msg: 'Passwords do not match' });
 
   if (validationErrors.length) {
     req.flash('errors', validationErrors);
@@ -245,7 +246,8 @@ exports.postDeleteAccount = async (req, res, next) => {
  */
 exports.getOauthUnlink = async (req, res, next) => {
   try {
-    const { provider } = req.params;
+    let { provider } = req.params;
+    provider = validator.escape(provider);
     const user = await User.findById(req.user.id);
     user[provider.toLowerCase()] = undefined;
     const tokensWithoutProviderToUnlink = user.tokens.filter((token) =>
@@ -278,30 +280,32 @@ exports.getOauthUnlink = async (req, res, next) => {
  * GET /reset/:token
  * Reset Password page.
  */
-exports.getReset = (req, res, next) => {
-  if (req.isAuthenticated()) {
-    return res.redirect('/');
-  }
-  const validationErrors = [];
-  if (!validator.isHexadecimal(req.params.token)) validationErrors.push({ msg: 'Invalid Token.  Please retry.' });
-  if (validationErrors.length) {
-    req.flash('errors', validationErrors);
-    return res.redirect('/forgot');
-  }
+exports.getReset = async (req, res, next) => {
+  try {
+    if (req.isAuthenticated()) {
+      return res.redirect('/');
+    }
+    const validationErrors = [];
+    if (!validator.isHexadecimal(req.params.token)) validationErrors.push({ msg: 'Invalid Token.  Please retry.' });
+    if (validationErrors.length) {
+      req.flash('errors', validationErrors);
+      return res.redirect('/forgot');
+    }
 
-  User
-    .findOne({ passwordResetToken: req.params.token })
-    .where('passwordResetExpires').gt(Date.now())
-    .exec((err, user) => {
-      if (err) { return next(err); }
-      if (!user) {
-        req.flash('errors', { msg: 'Password reset token is invalid or has expired.' });
-        return res.redirect('/forgot');
-      }
-      res.render('account/reset', {
-        title: 'Password Reset'
-      });
+    const user = await User.findOne({
+      passwordResetToken: req.params.token,
+      passwordResetExpires: { $gt: Date.now() }
+    }).exec();
+    if (!user) {
+      req.flash('errors', { msg: 'Password reset token is invalid or has expired.' });
+      return res.redirect('/forgot');
+    }
+    res.render('account/reset', {
+      title: 'Password Reset'
     });
+  } catch (err) {
+    return next(err);
+  }
 };
 
 /**
@@ -315,7 +319,7 @@ exports.getVerifyEmailToken = (req, res, next) => {
   }
 
   const validationErrors = [];
-  if (req.params.token && (!validator.isHexadecimal(req.params.token))) validationErrors.push({ msg: 'Invalid Token.  Please retry.' });
+  if (validator.escape(req.params.token) && (!validator.isHexadecimal(req.params.token))) validationErrors.push({ msg: 'Invalid Token.  Please retry.' });
   if (validationErrors.length) {
     req.flash('errors', validationErrors);
     return res.redirect('/account');
@@ -366,7 +370,7 @@ exports.getVerifyEmail = (req, res, next) => {
 
   const setRandomToken = (token) => {
     User
-      .findOne({ email: req.user.email })
+      .findOne({ email: { $eq: req.user.email } })
       .then((user) => {
         user.emailVerificationToken = token;
         user = user.save();
@@ -380,7 +384,7 @@ exports.getVerifyEmail = (req, res, next) => {
       from: process.env.SITE_CONTACT_EMAIL,
       subject: 'Please verify your email address on Hackathon Starter',
       text: `Thank you for registering with hackathon-starter.\n\n
-        This verify your email address please click on the following link, or paste this into your browser:\n\n
+        To verify your email address, please click on the following link, or paste this into your browser:\n\n
         http://${req.headers.host}/account/verify/${token}\n\n
         \n\n
         Thank you!`
@@ -411,7 +415,7 @@ exports.getVerifyEmail = (req, res, next) => {
 exports.postReset = (req, res, next) => {
   const validationErrors = [];
   if (!validator.isLength(req.body.password, { min: 8 })) validationErrors.push({ msg: 'Password must be at least 8 characters long' });
-  if (req.body.password !== req.body.confirm) validationErrors.push({ msg: 'Passwords do not match' });
+  if (validator.escape(req.body.password) !== validator.escape(req.body.confirm)) validationErrors.push({ msg: 'Passwords do not match' });
   if (!validator.isHexadecimal(req.params.token)) validationErrors.push({ msg: 'Invalid Token.  Please retry.' });
 
   if (validationErrors.length) {
@@ -421,7 +425,7 @@ exports.postReset = (req, res, next) => {
 
   const resetPassword = () =>
     User
-      .findOne({ passwordResetToken: req.params.token })
+      .findOne({ passwordResetToken: { $eq: req.params.token } })
       .where('passwordResetExpires').gt(Date.now())
       .then((user) => {
         if (!user) {
@@ -497,7 +501,7 @@ exports.postForgot = (req, res, next) => {
 
   const setRandomToken = (token) =>
     User
-      .findOne({ email: req.body.email })
+      .findOne({ email: { $eq: req.body.email } })
       .then((user) => {
         if (!user) {
           req.flash('errors', { msg: 'Account with that email address does not exist.' });
@@ -538,4 +542,24 @@ exports.postForgot = (req, res, next) => {
     .then(sendForgotPasswordEmail)
     .then(() => res.redirect('/forgot'))
     .catch(next);
+};
+
+/**
+ * POST /account/logout-everywhere
+ * Logout current user from all devices
+ */
+exports.postLogoutEverywhere = async (req, res, next) => {
+  const userId = req.user.id;
+  try {
+    await Session.removeSessionByUserId(userId);
+    req.logout((err) => {
+      if (err) {
+        return next(err);
+      }
+      req.flash('info', { msg: 'You have been logged out of all sessions.' });
+      res.redirect('/');
+    });
+  } catch (err) {
+    return next(err);
+  }
 };
